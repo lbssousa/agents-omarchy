@@ -629,6 +629,17 @@ Panel {
     return clamp(1 - left / span, 0, 1)
   }
 
+  // The tooltip line for the time cursor: how much of the window is behind
+  // us, as a share and as time. Empty when the cursor isn't shown.
+  function elapsedText(w) {
+    var share = windowElapsed(w)
+    if (share < 0) return ""
+    var gone = Math.max(0, windowSpanFor(w) - resetMsFor(w))
+    return Commons.I18n.t("agents.windowElapsed", "Tempo decorrido: %1% (%2)")
+      .arg(Commons.I18n.formatNumber(Math.round(share * 100)))
+      .arg(formatDuration(gone))
+  }
+
   function formatDuration(ms) {
     if (!(ms > 0)) return Commons.I18n.t("agents.durationNow")
     var minutes = Math.floor(ms / 60000)
@@ -2139,6 +2150,8 @@ Panel {
           lines.push(compact.resetMs > 0
             ? Commons.I18n.t("agents.windowUsedResets").arg(windowName).arg(used).arg(root.formatDuration(compact.resetMs))
             : Commons.I18n.t("agents.windowUsed").arg(windowName).arg(used))
+          var elapsedLine = root.elapsedText(compact.window)
+          if (elapsedLine !== "") lines.push(elapsedLine)
         }
         if (compact.stale)
           lines.push(compact.fetchedAt > 0 && root.nowMs - compact.fetchedAt > 60000
@@ -2225,6 +2238,8 @@ Panel {
         lines.push(compact.resetMs > 0
           ? Commons.I18n.t("agents.windowUsedResets").arg(windowName).arg(used).arg(root.formatDuration(compact.resetMs))
           : Commons.I18n.t("agents.windowUsed").arg(windowName).arg(used))
+        var elapsedLine = root.elapsedText(compact.window)
+        if (elapsedLine !== "") lines.push(elapsedLine)
         if (compact.stale && compact.fetchedAt > 0)
           lines.push(Commons.I18n.t("agents.limitsStaleAge").arg(root.formatDuration(Math.max(0, root.now - compact.fetchedAt))))
         return lines.join("\n")
