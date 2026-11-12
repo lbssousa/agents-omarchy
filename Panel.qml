@@ -532,10 +532,14 @@ Panel {
   function limitWindow(label, percent, resetAt, title) {
     var reset = new Date(String(resetAt || "")).getTime()
     var expired = isFinite(reset) && reset <= root.nowMs
+    var resolved = String(title || "") !== "" ? String(title) : windowTitle(label)
     return {
-      title: String(title || "") !== "" ? String(title) : windowTitle(label),
+      title: resolved,
       percent: expired ? 0 : Number(percent),
-      resetAt: expired ? "" : String(resetAt || "")
+      resetAt: expired ? "" : String(resetAt || ""),
+      // The label's length counts only when it names the same window; a
+      // model name like "(1M context)" isn't a duration.
+      spanMs: windowTitle(label) === resolved ? windowSpanMs(label) : 0
     }
   }
 
@@ -575,7 +579,7 @@ Panel {
       if (!part) continue
       var base = byTitle[part.window]
       if (base) {
-        base.scoped.push({ title: part.model, percent: windows[j].percent, resetAt: windows[j].resetAt })
+        base.scoped.push({ title: part.model, percent: windows[j].percent, resetAt: windows[j].resetAt, spanMs: windows[j].spanMs })
       } else {
         windows[j].scoped = []
         out.push(windows[j])
@@ -599,6 +603,30 @@ Panel {
     if (!w || w.resetAt === "") return -1
     var ms = new Date(w.resetAt).getTime()
     return isFinite(ms) ? ms - root.nowMs : -1
+  }
+
+  // How long a window runs from one reset to the next: from its label when it
+  // spells that out ("Session (5-hour)"), otherwise from its kind.
+  function windowSpanFor(w) {
+    if (!w) return 0
+    var span = Number(w.spanMs) || windowSpanMs(w.label)
+    if (span > 0) return span
+    var title = String(w.title || "")
+    var part = scopedPart(title)
+    if (part) title = part.window
+    if (title === "Session") return 5 * 3600 * 1000
+    if (title === "Weekly") return 7 * 24 * 3600 * 1000
+    if (title === "Monthly") return 30 * 24 * 3600 * 1000
+    return 0
+  }
+
+  // The share of the window's time already gone, 0 at the last reset and 1 at
+  // the next one; -1 when the reset time or the window's length is unknown.
+  function windowElapsed(w) {
+    var span = windowSpanFor(w)
+    var left = resetMsFor(w)
+    if (!(span > 0) || !(left > 0)) return -1
+    return clamp(1 - left / span, 0, 1)
   }
 
   function formatDuration(ms) {
@@ -2142,6 +2170,7 @@ Panel {
       value: compact.window ? compact.window.percent : -1
       alarming: compact.alarming
       markers: compact.scoped
+      elapsed: root.windowElapsed(compact.window)
     }
 
     // Sized to the widest time left ("19h 40m"), so every meter ends in the
@@ -2234,6 +2263,7 @@ Panel {
       anchors.verticalCenter: parent.verticalCenter
       value: compact.window ? compact.window.percent : -1
       alarming: compact.alarming
+      elapsed: compact.isNA ? -1 : root.windowElapsed(compact.window)
     }
 
     TextMetrics {
@@ -2266,6 +2296,11 @@ Panel {
 
     // Other allowances on the same clock, drawn as ticks across the track.
     property var markers: []
+
+    // How much of the window's time has gone by (0..1), drawn as a cursor that
+    // walks the track toward the reset; -1 hides it. A fill ahead of the
+    // cursor is spending faster than the clock.
+    property real elapsed: -1
 
     implicitHeight: thickness
 
@@ -2303,6 +2338,25 @@ Panel {
         readonly property real along: root.clamp(meterTrack.width * root.clamp(Number(modelData.percent), 0, 1) - width / 2, 0, meterTrack.width - width)
         x: LayoutMirroring.enabled ? meterTrack.width - width - along : along
         color: meter.alarming ? root.urgent : root.foreground
+      }
+    }
+
+    Rectangle {
+      id: timeCursor
+      visible: meter.elapsed >= 0 && meterTrack.width > 0
+      width: Math.max(2, Math.round(meter.thickness * 0.5)) + 2
+      height: meter.thickness * 3
+      radius: width / 2
+      anchors.verticalCenter: meterTrack.verticalCenter
+      // Outlined in the panel's background so it reads over the fill too.
+      color: Commons.Color.accent
+      border.width: 1
+      border.color: root.surface
+      readonly property real along: root.clamp(meterTrack.width * root.clamp(meter.elapsed, 0, 1) - width / 2, 0, meterTrack.width - width)
+      x: LayoutMirroring.enabled ? meterTrack.width - width - along : along
+
+      Behavior on x {
+        NumberAnimation { duration: Style.duration(160); easing.type: Easing.OutCubic }
       }
     }
   }
