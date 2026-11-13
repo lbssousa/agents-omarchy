@@ -11,6 +11,42 @@ import json
 import os
 import subprocess
 import sys
+from datetime import datetime, timezone
+
+# How long each window runs, from the description agy gives it.
+SPANS = {"session": 5 * 3600, "weekly": 7 * 24 * 3600}
+
+# A reset this close to a whole span away is the "now + span" agy reports for
+# a window nobody has touched since it renewed.
+IDLE_SLACK_SECONDS = 120
+
+
+def window_idle(remaining, reset_time, kind):
+    """Whether a window is renewed but not counting yet.
+
+    agy never says so outright: an untouched window reports 100% left and a
+    reset one whole span from now, which slides forward on every query. Its
+    clock starts on the next use.
+    """
+    if remaining < 1.0:
+        return False
+    try:
+        reset = datetime.fromisoformat(reset_time.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if reset.tzinfo is None:
+        reset = reset.replace(tzinfo=timezone.utc)
+    left = (reset - datetime.now(timezone.utc)).total_seconds()
+    return left >= SPANS[kind] - IDLE_SLACK_SECONDS
+
+
+def window_entry(title, label, used, reset_time, idle):
+    # An idle window has no reset to count down to.
+    reset = "" if idle else reset_time
+    entry = {"title": title, "label": label, "percent": used, "resetAt": reset, "resetsAt": reset}
+    if idle:
+        entry["idle"] = True
+    return entry
 
 
 def update_agy():
@@ -81,19 +117,21 @@ def update_agy():
         grp_lower = grp.lower()
         desc_lower = desc.lower()
 
+        if "five hour" in desc_lower or "5h" in desc_lower or "session" in desc_lower:
+            kind, title, label = "session", "Session", "Sessão"
+        elif "weekly" in desc_lower:
+            kind, title, label = "weekly", "Weekly", "Semanal"
+        else:
+            continue
+        entry = window_entry(title, label, used, reset_time, window_idle(rem, reset_time, kind))
+
         if "gemini models" in grp_lower:
-            if "five hour" in desc_lower or "5h" in desc_lower or "session" in desc_lower:
-                gemini_w["session"] = {"title": "Session", "label": "Sessão", "percent": used, "resetAt": reset_time, "resetsAt": reset_time}
-            elif "weekly" in desc_lower:
-                gemini_w["weekly"] = {"title": "Weekly", "label": "Semanal", "percent": used, "resetAt": reset_time, "resetsAt": reset_time}
+            gemini_w[kind] = entry
         elif "argon" in grp_lower or "argon" in desc_lower:
-            if "weekly" in desc_lower:
-                argon_w["weekly"] = {"title": "Weekly", "label": "Semanal", "percent": used, "resetAt": reset_time, "resetsAt": reset_time}
+            if kind == "weekly":
+                argon_w[kind] = entry
         elif "claude" in grp_lower or "gpt" in grp_lower:
-            if "five hour" in desc_lower or "5h" in desc_lower or "session" in desc_lower:
-                cg_w["session"] = {"title": "Session", "label": "Sessão", "percent": used, "resetAt": reset_time, "resetsAt": reset_time}
-            elif "weekly" in desc_lower:
-                cg_w["weekly"] = {"title": "Weekly", "label": "Semanal", "percent": used, "resetAt": reset_time, "resetsAt": reset_time}
+            cg_w[kind] = entry
 
     # Gemini (Flash, Pro)
     if "session" in gemini_w:
@@ -115,16 +153,15 @@ def update_agy():
 
     # Flat limits for general components
     flat_limits = []
-    if "session" in gemini_w:
-        flat_limits.append({"title": "Gemini Sessão", "label": "Gemini Sessão", "percent": gemini_w["session"]["percent"], "resetAt": gemini_w["session"]["resetAt"], "resetsAt": gemini_w["session"]["resetAt"]})
-    if "weekly" in gemini_w:
-        flat_limits.append({"title": "Gemini Semanal", "label": "Gemini Semanal", "percent": gemini_w["weekly"]["percent"], "resetAt": gemini_w["weekly"]["resetAt"], "resetsAt": gemini_w["weekly"]["resetAt"]})
-    if "weekly" in argon_w:
-        flat_limits.append({"title": "Gemini 4 Argon Semanal", "label": "Gemini 4 Argon Semanal", "percent": argon_w["weekly"]["percent"], "resetAt": argon_w["weekly"]["resetAt"], "resetsAt": argon_w["weekly"]["resetAt"]})
-    if "session" in cg_w:
-        flat_limits.append({"title": "Claude/GPT Sessão", "label": "Claude/GPT Sessão", "percent": cg_w["session"]["percent"], "resetAt": cg_w["session"]["resetAt"], "resetsAt": cg_w["session"]["resetAt"]})
-    if "weekly" in cg_w:
-        flat_limits.append({"title": "Claude/GPT Semanal", "label": "Claude/GPT Semanal", "percent": cg_w["weekly"]["percent"], "resetAt": cg_w["weekly"]["resetAt"], "resetsAt": cg_w["weekly"]["resetAt"]})
+    for prefix, windows, kinds in (
+        ("Gemini", gemini_w, ("session", "weekly")),
+        ("Gemini 4 Argon", argon_w, ("weekly",)),
+        ("Claude/GPT", cg_w, ("session", "weekly")),
+    ):
+        for kind in kinds:
+            if kind in windows:
+                name = f"{prefix} {windows[kind]['label']}"
+                flat_limits.append(dict(windows[kind], title=name, label=name))
 
     record["limits"] = flat_limits
     if not record.get("tierLabel") or record.get("tierLabel") == "":

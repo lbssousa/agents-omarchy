@@ -529,14 +529,21 @@ Panel {
   // and that beats reading it back out of the label: a model-scoped limit is
   // titled after its model, and a name like "Opus 5 (1M context)" would parse
   // as a one-minute window.
-  function limitWindow(label, percent, resetAt, title) {
+  function limitWindow(label, percent, resetAt, title, idle) {
     var reset = new Date(String(resetAt || "")).getTime()
     var expired = isFinite(reset) && reset <= root.nowMs
     var resolved = String(title || "") !== "" ? String(title) : windowTitle(label)
+    var value = expired ? 0 : Number(percent)
+    var resetText = expired ? "" : String(resetAt || "")
     return {
       title: resolved,
-      percent: expired ? 0 : Number(percent),
-      resetAt: expired ? "" : String(resetAt || ""),
+      percent: value,
+      resetAt: resetText,
+      // Renewed and not yet running: a reset that has passed, a window the
+      // service reports untouched with no reset (Claude's session after its
+      // reset, until the next prompt starts the clock), or one the collector
+      // flags itself. It has no countdown until the next use.
+      idle: idle === true || (resetText === "" && value === 0),
       // The label's length counts only when it names the same window; a
       // model name like "(1M context)" isn't a duration.
       spanMs: windowTitle(label) === resolved ? windowSpanMs(label) : 0
@@ -550,7 +557,7 @@ Panel {
     for (var i = 0; i < list.length; i++) {
       var entry = list[i] || {}
       var percent = Number(entry.percent)
-      if (percent >= 0) out.push(limitWindow(entry.label, percent, entry.resetsAt, entry.title))
+      if (percent >= 0) out.push(limitWindow(entry.label, percent, entry.resetsAt, entry.title, entry.idle))
     }
     return out
   }
@@ -579,7 +586,7 @@ Panel {
       if (!part) continue
       var base = byTitle[part.window]
       if (base) {
-        base.scoped.push({ title: part.model, percent: windows[j].percent, resetAt: windows[j].resetAt, spanMs: windows[j].spanMs })
+        base.scoped.push({ title: part.model, percent: windows[j].percent, resetAt: windows[j].resetAt, spanMs: windows[j].spanMs, idle: windows[j].idle })
       } else {
         windows[j].scoped = []
         out.push(windows[j])
@@ -600,7 +607,7 @@ Panel {
   }
 
   function resetMsFor(w) {
-    if (!w || w.resetAt === "") return -1
+    if (!w || w.idle === true || w.resetAt === "") return -1
     var ms = new Date(w.resetAt).getTime()
     return isFinite(ms) ? ms - root.nowMs : -1
   }
@@ -624,6 +631,8 @@ Panel {
   // the next one; -1 when the reset time or the window's length is unknown.
   function windowElapsed(w) {
     var span = windowSpanFor(w)
+    // An idle window has none of its time behind it yet.
+    if (w && w.idle === true) return span > 0 ? 0 : -1
     var left = resetMsFor(w)
     if (!(span > 0) || !(left > 0)) return -1
     return clamp(1 - left / span, 0, 1)
@@ -634,10 +643,19 @@ Panel {
   function elapsedText(w) {
     var share = windowElapsed(w)
     if (share < 0) return ""
+    if (w.idle === true)
+      return Commons.I18n.t("agents.windowIdle", "Janela inativa: a contagem começa no próximo uso")
     var gone = Math.max(0, windowSpanFor(w) - resetMsFor(w))
     return Commons.I18n.t("agents.windowElapsed", "Tempo decorrido: %1% (%2)")
       .arg(Commons.I18n.formatNumber(Math.round(share * 100)))
       .arg(formatDuration(gone))
+  }
+
+  // What a meter's row shows in place of the time left: the countdown, or a
+  // short notice for a window that hasn't started counting.
+  function windowValueText(w, resetMs) {
+    if (w && w.idle === true) return Commons.I18n.t("agents.windowIdleShort", "inativa")
+    return resetMs > 0 ? formatDuration(resetMs) : ""
   }
 
   function formatDuration(ms) {
@@ -2199,12 +2217,12 @@ Panel {
     // exact percentage is in the row's tooltip.
     Text {
       id: compactValue
-      width: Math.ceil(compactValueMetrics.advanceWidth)
+      width: Math.max(Math.ceil(compactValueMetrics.advanceWidth), Math.ceil(implicitWidth))
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
       textFormat: Text.PlainText
       horizontalAlignment: Text.AlignRight
-      text: compact.resetMs > 0 ? root.formatDuration(compact.resetMs) : ""
+      text: root.windowValueText(compact.window, compact.resetMs)
       color: root.dim
       font.family: root.fontFamily
       font.pixelSize: Style.font.bodySmall
@@ -2290,12 +2308,12 @@ Panel {
 
     Text {
       id: compactValue
-      width: Math.ceil(groupValueMetrics.advanceWidth)
+      width: Math.max(Math.ceil(groupValueMetrics.advanceWidth), Math.ceil(implicitWidth))
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
       textFormat: Text.PlainText
       horizontalAlignment: Text.AlignRight
-      text: compact.isNA ? "—" : (compact.resetMs > 0 ? root.formatDuration(compact.resetMs) : "")
+      text: compact.isNA ? "—" : root.windowValueText(compact.window, compact.resetMs)
       color: root.dim
       font.family: root.fontFamily
       font.pixelSize: Style.font.bodySmall
