@@ -305,7 +305,9 @@ It is the exact complement of the provider collectors: a provider id another col
   the picked account's agent. While an agent
   with several accounts has its active one within 15 points of its switch
   threshold (80% at the default), the limits refresh every three minutes.
-- IPC: `omarchy-shell omarchy.agents <open|close|toggle|refresh>`.
+- IPC: `omarchy-shell omarchy.agents <open|close|toggle|refresh>`, and
+  `showAgent <id> <true|false>`, which Omarchy's `omarchy-agent-account-add`
+  and `-remove` call to show an agent signed in to, or hide one signed out of.
 
 ## Settings
 

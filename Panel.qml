@@ -30,6 +30,19 @@ Panel {
   // answers is how much room is left, and where.
   readonly property var providers: usage.subscribedProviders
 
+  // Hides an agent from the panel, or shows a hidden one again, as signing in
+  // to it does. The sign-in commands ask for this through showAgent, so the
+  // change is made here, one at a time, on the settings as they are now.
+  function setProviderShown(id, shown) {
+    if (!bar || !bar.shell || id === "") return
+    var current = settings && settings.providers && settings.providers[id]
+    if (shown && (!current || current.enabled !== false)) return
+    var next = JSON.parse(JSON.stringify(settings || {}))
+    if (!next.providers) next.providers = {}
+    next.providers[id] = Object.assign({}, next.providers[id] || {}, { enabled: shown })
+    bar.shell.updateEntryInline(moduleName, next)
+  }
+
   property bool cursorActive: false
 
   // Countdowns and "last updated" ages read this instead of Date.now() so the
@@ -1079,6 +1092,10 @@ Panel {
     function hide(): void { root.close() }
     function toggle(): void { root.toggle() }
     function refresh(): string { root.refreshNow(); return "ok" }
+    // omarchy-agent-account-add/-remove call this on the built-in id, which
+    // reaches this clone. Shown as "true" or "false": omarchy-shell hands every
+    // argument over as text, and a bool parameter takes the text "false" as true.
+    function showAgent(id: string, shown: string): string { root.setProviderShown(id, shown === "true"); return "ok" }
   }
 
   BarIconButton {
