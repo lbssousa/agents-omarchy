@@ -5,10 +5,6 @@ plugin_link := env("HOME") / ".config/omarchy/plugins/lbssousa.agents"
 default:
     @just --list
 
-# The QML's pure functions, run in node
-test:
-    node --test tests/
-
 # Plugin validation
 validate:
     omarchy-plugin-validate .

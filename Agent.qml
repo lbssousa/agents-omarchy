@@ -40,16 +40,11 @@ Item {
 
   function parse(content) {
     var text = String(content || "")
-    // Every usage update stamps a fresh updatedAt even on unchanged records;
-    // ignore it so unchanged agents don't trigger a full panel rebuild.
-    // Nothing in the UI or the sync snapshots reads a record's updatedAt (so
-    // it stays at the last meaningful change). Omarchy #20401.
-    var key = text.replace(/"updatedAt"\s*:\s*"[^"]*"/, "")
-    if (root.record && key === root.parsedText) return
+    if (root.record && text === root.parsedText) return
     try {
       var parsed = JSON.parse(text)
       root.record = parsed && typeof parsed === "object" ? parsed : null
-      root.parsedText = root.record ? key : ""
+      root.parsedText = root.record ? text : ""
     } catch (e) {
       console.warn("agents", "Ignoring bad usage record", root.path, e)
       root.clear()
