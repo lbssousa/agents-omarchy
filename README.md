@@ -21,15 +21,20 @@ verbatim except for two additions:
   the tooltip's words come from this plugin's own catalogs in `i18n/`, one
   per language the shell ships. The PR's Grok collector change (a rolled
   window stamping the record) lives in `/usr/bin` and isn't carried here.
-- **Gemini's weekly limit.** Cloud Code's `retrieveUserQuotaSummary` leaves the
-  Gemini group out (on Pro as on Ultra), so the Antigravity collector only finds
-  Gemini's 5-hour buckets. `gemini-weekly.py` reads the weekly row from
-  `agy -p /usage` into
+- **Gemini's weekly limit.** Google serves some accounts (Pro and Ultra
+  among them) through AICode rather than Cloud Code, and for those Cloud
+  Code's `retrieveUserQuotaSummary` leaves the Gemini group out, so the
+  Antigravity collector only finds Gemini's 5-hour buckets
+  (omacom/omarchy#16906). `gemini-weekly.py` asks AICode's
+  `v1alpha/remote:getUserQuotaSummary` instead, with the sign-in and the
+  parser of Omarchy's own collector (`omarchy-agent-usage-agy`), and writes
+  the Weekly limit it finds to
   `~/.local/state/omarchy/agents/lbssousa.agents/gemini-weekly.json` (at most
-  once a minute, unless forced), and `Main.qml` adds it after the session limit
+  once a minute, unless forced). `Main.qml` adds it after the session limit
   of the `agy` record when the collector has no weekly one of its own, for the
   same account, while it is under a day old. `agy.json` itself is never
-  rewritten. Needs the `agy` CLI signed in.
+  rewritten. Like the collector, it needs an unexpired Antigravity sign-in
+  (agy, omp, pi or opencode's); the `agy` CLI itself isn't needed.
 
 ## Panel
 

@@ -200,8 +200,9 @@ Item {
 
   // ---------------------------------------------------------- gemini weekly
 
-  // Antigravity's collector can't see Gemini's weekly limit (Cloud Code's
-  // quota summary omits the Gemini group), but `agy -p /usage` reports it.
+  // Antigravity's collector can't see Gemini's weekly limit for accounts
+  // Google serves through AICode (Cloud Code's quota summary omits the Gemini
+  // group); AICode's own summary has it.
   // gemini-weekly.py keeps it in a file of this plugin's own, merged into the
   // agy record in memory, so agy.json stays exactly what the collector wrote.
   readonly property string geminiWeeklyPath: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/omarchy/agents/lbssousa.agents/gemini-weekly.json"
