@@ -14,10 +14,13 @@ verbatim except for two additions:
 
 - **Pace marker** — omacom/omarchy#13870, not merged yet. A limit meter whose
   label names its cycle carries the cycle's elapsed time as a dim band behind
-  the fill, ending in a notch where the clock stands; the tooltip says how far
-  ahead or behind the clock the spend is. The PR's Grok collector change (a
-  rolled window stamping the record) lives in `/usr/bin` and isn't carried
-  here.
+  the fill, ending where the clock stands, and the tooltip says how far ahead
+  or behind the clock the spend is. Two changes from the PR: the clock is
+  marked by a cursor in the accent colour (taller than the allowance ticks,
+  outlined, mirrored in right-to-left languages) instead of a dim notch, and
+  the tooltip's words come from this plugin's own catalogs in `i18n/`, one
+  per language the shell ships. The PR's Grok collector change (a rolled
+  window stamping the record) lives in `/usr/bin` and isn't carried here.
 - **Gemini's weekly limit.** Cloud Code's `retrieveUserQuotaSummary` leaves the
   Gemini group out (on Pro as on Ultra), so the Antigravity collector only finds
   Gemini's 5-hour buckets. `gemini-weekly.py` reads the weekly row from

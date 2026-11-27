@@ -1,0 +1,6 @@
+{
+  "agents.paceElapsed": "%1% siklus berlalu",
+  "agents.paceOn": "sesuai laju",
+  "agents.paceAhead": "%1% lebih cepat",
+  "agents.paceBehind": "%1% lebih lambat"
+}

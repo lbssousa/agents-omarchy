@@ -1,0 +1,6 @@
+{
+  "agents.paceElapsed": "周期已过 %1%",
+  "agents.paceOn": "节奏正常",
+  "agents.paceAhead": "超前 %1%",
+  "agents.paceBehind": "落后 %1%"
+}

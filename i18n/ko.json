@@ -1,0 +1,6 @@
+{
+  "agents.paceElapsed": "주기의 %1% 경과",
+  "agents.paceOn": "속도 적정",
+  "agents.paceAhead": "%1% 앞섬",
+  "agents.paceBehind": "%1% 뒤처짐"
+}

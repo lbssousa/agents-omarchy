@@ -1,0 +1,6 @@
+{
+  "agents.paceElapsed": "đã qua %1% chu kỳ",
+  "agents.paceOn": "đúng nhịp",
+  "agents.paceAhead": "nhanh hơn %1%",
+  "agents.paceBehind": "chậm hơn %1%"
+}

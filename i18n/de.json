@@ -1,0 +1,6 @@
+{
+  "agents.paceElapsed": "%1% des Zyklus vergangen",
+  "agents.paceOn": "im Plan",
+  "agents.paceAhead": "%1% voraus",
+  "agents.paceBehind": "%1% zurück"
+}

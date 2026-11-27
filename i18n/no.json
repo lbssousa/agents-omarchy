@@ -1,0 +1,6 @@
+{
+  "agents.paceElapsed": "%1% av syklusen er gått",
+  "agents.paceOn": "i rute",
+  "agents.paceAhead": "%1% foran",
+  "agents.paceBehind": "%1% bak"
+}

@@ -1,0 +1,6 @@
+{
+  "agents.paceElapsed": "ผ่านไปแล้ว %1% ของรอบ",
+  "agents.paceOn": "ตามจังหวะ",
+  "agents.paceAhead": "เร็วกว่า %1%",
+  "agents.paceBehind": "ช้ากว่า %1%"
+}

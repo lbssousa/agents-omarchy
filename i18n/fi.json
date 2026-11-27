@@ -1,0 +1,6 @@
+{
+  "agents.paceElapsed": "%1% jaksosta kulunut",
+  "agents.paceOn": "tahdissa",
+  "agents.paceAhead": "%1% edellä",
+  "agents.paceBehind": "%1% jäljessä"
+}

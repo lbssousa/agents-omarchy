@@ -1,0 +1,6 @@
+{
+  "agents.paceElapsed": "upłynęło %1% cyklu",
+  "agents.paceOn": "w tempie",
+  "agents.paceAhead": "%1% do przodu",
+  "agents.paceBehind": "%1% w tyle"
+}

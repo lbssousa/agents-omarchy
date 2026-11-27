@@ -1,0 +1,6 @@
+{
+  "agents.paceElapsed": "a ciklus %1%-a eltelt",
+  "agents.paceOn": "ütemben",
+  "agents.paceAhead": "%1%-kal előrébb",
+  "agents.paceBehind": "%1%-kal lemaradva"
+}

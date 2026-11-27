@@ -1,0 +1,6 @@
+{
+  "agents.paceElapsed": "%1% del cicle transcorregut",
+  "agents.paceOn": "al ritme",
+  "agents.paceAhead": "%1% per davant",
+  "agents.paceBehind": "%1% per darrere"
+}

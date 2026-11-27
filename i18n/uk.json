@@ -1,0 +1,6 @@
+{
+  "agents.paceElapsed": "минуло %1% циклу",
+  "agents.paceOn": "у темпі",
+  "agents.paceAhead": "випередження на %1%",
+  "agents.paceBehind": "відставання на %1%"
+}

@@ -1,0 +1,6 @@
+{
+  "agents.paceElapsed": "πέρασε το %1% του κύκλου",
+  "agents.paceOn": "εντός ρυθμού",
+  "agents.paceAhead": "%1% μπροστά",
+  "agents.paceBehind": "%1% πίσω"
+}

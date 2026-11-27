@@ -1957,6 +1957,10 @@ Panel {
     onTriggered: root.localModelsService.refreshNetwork()
   }
 
+  // The pace marker's words, from this plugin's own catalogs (i18n/<code>.json)
+  // since the shell's catalog doesn't carry them.
+  property Commons.Translations paceStrings: Commons.Translations { directory: Qt.resolvedUrl("i18n") }
+
   // Choosing a default from a star. The star fills at once, and once the
   // choice is saved the default is read back, so one the command refused
   // (an agent whose CLI isn't installed here) doesn't stay starred.
@@ -3824,8 +3828,9 @@ Panel {
     readonly property string paceCaption: {
       if (!compact.paceKnown) return ""
       var points = Math.round(Math.abs(compact.paceDelta) * 100)
-      if (points < 1) return "on pace"
-      return points + "% " + (compact.paceDelta > 0 ? "ahead" : "behind")
+      if (points < 1) return root.paceStrings.t("agents.paceOn", "on pace")
+      return root.paceStrings.t(compact.paceDelta > 0 ? "agents.paceAhead" : "agents.paceBehind", compact.paceDelta > 0 ? "%1% ahead" : "%1% behind")
+        .arg(Commons.I18n.formatNumber(points))
     }
     implicitHeight: Math.max(compactTitle.implicitHeight, compactValue.implicitHeight)
 
@@ -3845,7 +3850,8 @@ Panel {
         // The row shows the pace as a band and a notch on the meter; the words
         // live here, with the exact percentage, so the row stays one line.
         if (compact.paceCaption !== "")
-          lines.push(Math.round(compact.elapsed * 100) + "% of the cycle elapsed · " + compact.paceCaption)
+          lines.push(root.paceStrings.t("agents.paceElapsed", "%1% of the cycle elapsed")
+            .arg(Commons.I18n.formatNumber(Math.round(compact.elapsed * 100))) + " · " + compact.paceCaption)
         if (compact.stale)
           lines.push(compact.fetchedAt > 0 && root.nowMs - compact.fetchedAt > 60000
             ? Commons.I18n.t("agents.lastUpdatedAgo").arg(root.formatDuration(root.nowMs - compact.fetchedAt))
@@ -3959,15 +3965,21 @@ Panel {
     }
 
     // Where the clock stands in the cycle, marked so the fill can be compared
-    // with it. Dim, so it reads as the clock rather than as another allowance.
+    // with it: a cursor in the accent colour, taller than the allowance ticks
+    // and outlined in the panel's background so it reads over the fill too.
     Rectangle {
-      visible: meter.elapsed >= 0
-      width: Math.max(2, Math.round(meter.thickness * 0.5))
-      height: meter.thickness * 2.5
+      visible: meter.elapsed >= 0 && meterTrack.width > 0
+      width: Math.max(2, Math.round(meter.thickness * 0.5)) + 2
+      height: meter.thickness * 3
       radius: width / 2
       anchors.verticalCenter: meterTrack.verticalCenter
-      x: root.clamp(meterTrack.width * root.clamp(meter.elapsed, 0, 1) - width / 2, 0, meterTrack.width - width)
-      color: root.dim
+      color: Commons.Color.accent
+      border.width: 1
+      border.color: root.surface
+      readonly property real along: root.clamp(meterTrack.width * root.clamp(meter.elapsed, 0, 1) - width / 2, 0, meterTrack.width - width)
+      // Explicit x doesn't mirror, so the cursor measures from the end the
+      // band and the fill grow from.
+      x: LayoutMirroring.enabled ? meterTrack.width - width - along : along
     }
 
     Repeater {
