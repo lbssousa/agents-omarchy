@@ -988,14 +988,24 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  onOpenedChanged: if (opened) {
+  onOpenedChanged: if (!opened) {
+    openRefresh.stop()
+  } else {
     if (addStage !== "running") addStage = ""
     resetKeys()
     if (usage.enabledProviders.length === 0 && !checkProcess.running) checkProcess.running = true
     nowMs = Date.now()
     if (panelFlick) panelFlick.contentY = 0
-    usage.refreshLimits()
+    // Deferred past the open animation, so spawning omarchy-agent-usage-update
+    // doesn't compete with rendering it (Omarchy #20401).
+    openRefresh.restart()
     Qt.callLater(function() { if (panel.loadedContent) panel.loadedContent.forceActiveFocus() })
+  }
+
+  Timer {
+    id: openRefresh
+    interval: Math.max(16, Style.duration(220))
+    onTriggered: if (root.opened) usage.refreshLimits()
   }
 
   Main {
@@ -1209,9 +1219,14 @@ Panel {
             }
           }
 
-          AddView {
-            visible: root.addStage !== "" || root.blankSlate
+          // Built only while it shows, not on every open (Omarchy #20401).
+          Loader {
+            active: root.addStage !== "" || root.blankSlate
+            visible: active
             width: column.width
+            sourceComponent: Component {
+              AddView {}
+            }
           }
 
           Repeater {
@@ -1381,7 +1396,10 @@ Panel {
         foreground: root.foreground
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
-        onVisibleChanged: if (visible) { text = ""; forceActiveFocus() }
+        // In a view the Loader builds already showing, visible never changes.
+        function claimFocus() { if (visible) { text = ""; forceActiveFocus() } }
+        onVisibleChanged: claimFocus()
+        Component.onCompleted: claimFocus()
         onAccepted: root.startAdd(text.trim())
         Keys.onEscapePressed: function(event) { root.cancelAdd(); event.accepted = true }
       }
