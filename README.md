@@ -7,6 +7,25 @@ and draws whatever appears there. `Panel.qml` owns the bar button and the
 popup; `Main.qml` discovers and watches the records (and handles the optional
 cross-device aggregation); `Agent.qml` is the per-record file watcher.
 
+## Differences from the built-in
+
+This is Omarchy's own Agents plugin (`omarchy.agents`, from Omarchy 4.6), kept
+verbatim except for two additions:
+
+- **Time cursor.** Each limit meter has a cursor at the share of the window's
+  time already gone (5-hour session, weekly, monthly), walking toward the
+  reset. A fill ahead of the cursor is spending faster than the clock. A window
+  with no reset time shows none.
+- **Gemini's weekly limit.** Cloud Code's `retrieveUserQuotaSummary` leaves the
+  Gemini group out (on Pro as on Ultra), so the Antigravity collector only finds
+  Gemini's 5-hour buckets. `gemini-weekly.py` reads the weekly row from
+  `agy -p /usage` into
+  `~/.local/state/omarchy/agents/lbssousa.agents/gemini-weekly.json` (at most
+  once a minute, unless forced), and `Main.qml` adds it after the session limit
+  of the `agy` record when the collector has no weekly one of its own, for the
+  same account, while it is under a day old. `agy.json` itself is never
+  rewritten. Needs the `agy` CLI signed in.
+
 ## Panel
 
 Every agent you use on one page, as one list of lines in the order you drag

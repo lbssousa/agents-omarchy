@@ -187,6 +187,7 @@ Item {
   }
 
   function runUpdate(kind, agentIds) {
+    runGeminiWeekly(kind, agentIds)
     if (updateProcess.running) {
       // Collapse queued requests to one full rerun; a forced refresh outranks
       // the cheaper kinds it might have been queued behind.
@@ -195,6 +196,74 @@ Item {
     }
     updateProcess.command = updateCommand(kind, agentIds)
     updateProcess.running = true
+  }
+
+  // ---------------------------------------------------------- gemini weekly
+
+  // Antigravity's collector can't see Gemini's weekly limit (Cloud Code's
+  // quota summary omits the Gemini group), but `agy -p /usage` reports it.
+  // gemini-weekly.py keeps it in a file of this plugin's own, merged into the
+  // agy record in memory, so agy.json stays exactly what the collector wrote.
+  readonly property string geminiWeeklyPath: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/omarchy/agents/lbssousa.agents/gemini-weekly.json"
+  property var geminiWeekly: null
+  property string geminiWeeklyText: ""
+
+  FileView {
+    id: geminiWeeklyFile
+    path: root.geminiWeeklyPath
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: root.parseGeminiWeekly(text())
+    onLoadFailed: root.parseGeminiWeekly("")
+  }
+
+  Process {
+    id: geminiWeeklyProcess
+    running: false
+    onExited: geminiWeeklyFile.reload()
+  }
+
+  function runGeminiWeekly(kind, agentIds) {
+    if (geminiWeeklyProcess.running || !providerEnabled("agy")) return
+    if (agentIds && agentIds.indexOf("agy") < 0) return
+    var script = decodeURIComponent(Qt.resolvedUrl("gemini-weekly.py").toString().replace(/^file:\/\//, ""))
+    geminiWeeklyProcess.command = ["python3", "-I", script].concat(kind === "force" ? ["--force"] : [])
+    geminiWeeklyProcess.running = true
+  }
+
+  function parseGeminiWeekly(content) {
+    var text = String(content || "")
+    if (text === geminiWeeklyText) return
+    geminiWeeklyText = text
+    try {
+      var parsed = text !== "" ? JSON.parse(text) : null
+      geminiWeekly = parsed && typeof parsed === "object" && parsed.limit ? parsed : null
+    } catch (e) {
+      geminiWeekly = null
+    }
+    dataRevision++
+  }
+
+  // The agy record's limits with Gemini's weekly one after its session, when
+  // the collector has none of its own, the figure is for the same account,
+  // and it is current: under a day old, with a reset still ahead (or none, for
+  // a window nobody has touched).
+  function agyLimits(record) {
+    var limits = Array.isArray(record.limits) ? record.limits : []
+    var side = geminiWeekly
+    if (!side || String(side.accountName || "") !== String(record.accountName || "")) return limits
+    if (Date.now() - Number(side.fetchedAt || 0) > 24 * 3600 * 1000) return limits
+    var reset = String(side.limit.resetsAt || "")
+    if (reset !== "" && !(new Date(reset).getTime() > Date.now())) return limits
+    var at = 0
+    for (var i = 0; i < limits.length; i++) {
+      if (limits[i] && limits[i].title === "Weekly") return limits
+      if (limits[i] && limits[i].title === "Session") at = i + 1
+    }
+    var out = limits.slice()
+    out.splice(at, 0, side.limit)
+    return out
   }
 
   function refresh() { refreshAll(true) }
@@ -492,7 +561,7 @@ Item {
 
       // Rate limits and balances stay per-account and are never merged
       // across devices.
-      limits: Array.isArray(record.limits) ? record.limits : [],
+      limits: String(record.id) === "agy" ? agyLimits(record) : Array.isArray(record.limits) ? record.limits : [],
       limitsStale: record.limitsStale === true,
       limitsFetchedAt: numberValue(record.limitsFetchedAt),
       tierLabel: String(record.tierLabel || ""),
